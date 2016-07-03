@@ -1,16 +1,14 @@
 import reportable from 'reportable'
 
-import { Group } from './Group'
+import { includes } from './util'
 import { concat, emptyBuffer, bufferFromString } from './buffers'
+import { Group } from './Group'
 import {
   GROUP_START_OPEN,
   GROUP_START_CLOSE,
   GROUP_END_OPEN,
   GROUP_END_CLOSE,
 } from './marks'
-
-const includes = (arr, item) =>
-  arr.indexOf(item) >= 0
 
 export class Parser {
   constructor() {
@@ -92,6 +90,13 @@ export class Parser {
       this.stack[0].write(chunk)
     } else {
       process.stdout.write(chunk)
+    }
+  }
+
+  close() {
+    if (this.scanBuffer.length) {
+      this.output(this.scanBuffer)
+      this.scanBuffer = emptyBuffer
     }
   }
 

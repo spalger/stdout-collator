@@ -1,0 +1,6 @@
+---
+root: true
+extends: "@spalger/personal"
+
+rules:
+  import/named: error

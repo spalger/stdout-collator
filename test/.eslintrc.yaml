@@ -1,0 +1,5 @@
+---
+extends: "../.eslintrc.yaml"
+
+env:
+  mocha: true

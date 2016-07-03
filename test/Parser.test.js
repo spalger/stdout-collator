@@ -2,19 +2,11 @@ import { expect } from 'chai'
 import {
   Parser,
   GroupMapper,
-  GROUP_START_OPEN,
-  GROUP_START_CLOSE,
-  GROUP_END_OPEN,
-  GROUP_END_CLOSE,
+  makeStartGroupMark as start,
+  makeEndGroupMark as end,
 } from '../src'
 
-const start = m =>
-  `${GROUP_START_OPEN}${JSON.stringify({ mark: 'start', ...m })}${GROUP_START_CLOSE}`
-
-const end = m =>
-  `${GROUP_END_OPEN}${JSON.stringify({ mark: 'end', ...m })}${GROUP_END_CLOSE}`
-
-describe.only('Parser', () => {
+describe('Parser', () => {
   context('several nested tests', () => {
     it('produces the correct tree', () => {
       const m = new Parser()

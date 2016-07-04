@@ -1,5 +1,5 @@
 {
-  "name": "text-stream-collator",
+  "name": "stdout-collator",
   "version": "0.0.0",
   "description": "Harvest and aggregate stdout so that it can be associated with test suites",
   "main": "target/babel/index.js",

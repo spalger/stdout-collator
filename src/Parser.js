@@ -12,53 +12,188 @@ import {
 } from './marks'
 
 export class Parser {
+  /**
+   *  all tokens
+   *
+   *  @private
+   *  @type {Array}
+   */
+  tokens = [
+    GROUP_START_OPEN,
+    GROUP_START_CLOSE,
+    GROUP_END_OPEN,
+    GROUP_END_CLOSE,
+  ]
+
+  /**
+   *  the token(s) we expect to see next
+   *
+   *  @private
+   *  @type {Array}
+   */
+  expectedTokens = [
+    GROUP_START_OPEN,
+  ]
+
+  /**
+   *  text we have not consumed that will be checked
+   *  when this.scan() is called again
+   *
+   *  @private
+   *  @type {String}
+   */
+  scanWindow = ''
+
+  /**
+   *  the stack of groups as they are created. The stack
+   *  is last-in-first-out, so stack[0] represents the
+   *  newest/current group
+   *
+   *  @private
+   *  @type {Array}
+   */
+  stack = []
+
+  /**
+   *  The bound stream object, call `bindToStream()` to set it
+   *
+   *  @private
+   *  @type {WritableStream}
+   */
+  stream = null
+
+  /**
+   *  The write function which was originally on the stream
+   *  which we will restore when `restoreStreamWrite()` is called
+   *  or use to flush data to the stream in `flushToStream()`
+   *
+   *  @private
+   *  @type {function?}
+   */
+  originalStreamWrite = null
+
+  /**
+   *  Has a scan been requested?
+   *
+   *  @private
+   *  @type {Boolean}
+   */
+  scanRequested = false
+
+  /**
+   *  Is a scan actively processing?
+   *
+   *  @private
+   *  @type {Boolean}
+   */
+  scanActive = false
+
+  /**
+   *  Setup the Parser's reporter
+   *  @constructor
+   */
   constructor() {
-    this.tokens = [
-      GROUP_START_OPEN,
-      GROUP_START_CLOSE,
-      GROUP_END_OPEN,
-      GROUP_END_CLOSE,
-    ]
-
-    this.expectedTokens = [
-      GROUP_START_OPEN,
-    ]
-
-    this.scanWindow = ''
-    this.stack = []
-
     reportable(this, [
       'groupStart',
       'groupEnd',
     ])
   }
 
+
+  /**
+   *  Helper method for logging to the underlying stream in
+   *  a fashion similar to console.log
+   *
+   *  @param  {...any} ...args - the values to log
+   *  @return {undefined}
+   */
+  log(...args) {
+    this.flushToStream(`${format(...args)}\n`)
+  }
+
+
+  /**
+   *  Close the parser, restore the stream's write method,
+   *  and clear our buffer. A closed parser can not be reused
+   *
+   *  @return {undefined}
+   */
+  close() {
+    this.closed = true
+    this.restoreStreamWrite()
+    if (this.scanWindow) {
+      this.scanWindow = ''
+      this.flushToStream(this.scanWindow)
+    }
+  }
+
+  /**
+   *  Define the stream the parser should monkey-patch
+   *  and hijack data from
+   *
+   *  @param  {WritableStream} stream
+   *  @return undefined
+   */
   bindToStream(stream) {
     this.stream = stream
-    const originalWrite = this.stream.write
-    this.restoreStreamWrite = () => {
-      this.stream.write = originalWrite
-    }
-
-    this.writeOut = originalWrite.bind(this.stream)
+    this.originalStreamWrite = this.stream.write
+    this.flushToStream = this.originalStreamWrite.bind(this.stream)
     this.stream.write = (chunk, encoding, callback) => {
       this.write(chunk, encoding)
       if (callback) callback()
     }
   }
 
+  /**
+   *  Restore the original write method
+   *  of the bound stream
+   *
+   *  @private
+   *  @return undefined
+   */
+  restoreStreamWrite() {
+    this.stream.write = this.originalStreamWrite
+  }
+
+  /**
+   *  Write a chunk of data to the underlying stream without parsing it
+   *
+   *  @private
+   *  @param  {String|Buffer} chunk - the data to write
+   *  @return undefined
+   */
+  flushToStream() {
+    throw new Error('bindToStream must be called before output can be flushed')
+  }
+
+  /**
+   *  Write a chunk to the scan buffer and scan
+   *
+   *  @private
+   *  @param  {String|Buffer} chunk
+   *  @param  {String?} encoding
+   *  @return {undefined}
+   */
   write(chunk, encoding) {
     if (this.closed) {
-      this.writeOut(chunk, encoding)
+      this.flushToStream(chunk, encoding)
     } else {
       this.scanWindow = this.scanWindow + chunk.toString('utf8')
       this.scan()
     }
   }
 
-  scanRequested = false
-  scanActive = false
-  scan = () => {
+  /**
+   *  Check the scan window for tokens and parse/collect
+   *  data indicated by them. Once the first token is discovered
+   *  it is passed to `onToken(token)` and then `scan()` is called
+   *  again until no tokens are found in the scanWindow, at which
+   *  `trimWindow()` will be called
+   *
+   *  @private
+   *  @return undefined
+   */
+  scan() {
     this.scanRequested = true
 
     while (this.scanRequested && !this.scanActive) {
@@ -75,6 +210,13 @@ export class Parser {
     }
   }
 
+  /**
+   *  The actual scan implementation, called by scan, but scan
+   *  is setup to only call "fulfill" if a scan is not in progress
+   *
+   *  @private
+   *  @return {undefined)
+   */
   fulfillScanRequest() {
     const matches = this.tokens
       .map(token => ({
@@ -111,10 +253,13 @@ export class Parser {
     this.scan()
   }
 
-  log(...args) {
-    this.writeOut(`${format(...args)}\n`)
-  }
-
+  /**
+   *  Search for partial tokens in the scan window and flush all
+   *  content that does not partially match a token
+   *
+   *  @private
+   *  @return {string} - the data trimmed from the `scanWindow`
+   */
   trimWindow() {
     let maxPartialMatchLen = 0
     this.tokens.forEach(t => {
@@ -136,24 +281,30 @@ export class Parser {
     return toFlush
   }
 
+  /**
+   *  Flush a chunk of data from the parser to the current consumer,
+   *  or if there aren't any, to the stream
+   *
+   *  @private
+   *  @param  {String|Buffer} chunk
+   *  @return {undefined}
+   */
   flush(chunk) {
     if (!chunk.length) return
     if (this.stack.length) {
       this.stack[0].write(chunk)
     } else {
-      this.writeOut(chunk)
+      this.flushToStream(chunk)
     }
   }
 
-  close() {
-    this.closed = true
-    this.restoreStreamWrite()
-    if (this.scanWindow) {
-      this.scanWindow = ''
-      this.writeOut(this.scanWindow)
-    }
-  }
-
+  /**
+   *  handle transitions from each token to the next
+   *
+   *  @private
+   *  @param  {[type]} token [description]
+   *  @return {[type]}       [description]
+   */
   onToken(token) {
     switch (token) {
       case GROUP_START_OPEN: {

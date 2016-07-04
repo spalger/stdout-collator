@@ -49,4 +49,37 @@ describe('Parser', () => {
       expect(gggchildren[0].endMark).to.include({ test: 'is a field', success: true })
     })
   })
+
+  describe('#trimWindow()', () => {
+    it('reduces the window to zero when it contains irrelevant info', () => {
+      const p = new Parser()
+      p.tokens = [
+        'token1',
+        'token2',
+      ]
+      p.scanWindow = 'hi'
+      p.trimWindow()
+      expect(p.scanWindow).to.equal('')
+    })
+
+    it('returns the trimmed content', () => {
+      const p = new Parser()
+      p.scanWindow = 'foobar'
+      expect(p.trimWindow()).to.equal('foobar')
+    })
+
+    it('keeps any text in the window that could represent a token', () => {
+      const p = new Parser()
+      p.tokens = ['$$$']
+      p.scanWindow = 'apple$'
+      expect(p.trimWindow()).to.equal('apple')
+    })
+
+    it('keeps all text that could represent a token', () => {
+      const p = new Parser()
+      p.tokens = ['@gmail', '@@hotmail']
+      p.scanWindow = '@@'
+      expect(p.trimWindow()).to.equal('')
+    })
+  })
 })

@@ -1,4 +1,3 @@
-import { concat, emptyBuffer } from './buffers'
 import { includes } from './util'
 
 const pendingProp = new WeakMap()
@@ -30,15 +29,14 @@ export class Group {
       throw new Error(`Unable to redefine built-in property ${name}`)
     }
 
-    const acc = emptyBuffer
-    pendingProp.set(this, { name, json, acc })
+    pendingProp.set(this, { name, json, acc: '' })
     this.props.push(name)
   }
 
   write(chunk) {
     const prop = pendingProp.get(this)
     if (!prop) throw new Error('no pending property to write in group')
-    prop.acc = concat(prop.acc, chunk)
+    prop.acc = prop.acc += chunk.toString('utf8')
   }
 
   finishProperty(name) {

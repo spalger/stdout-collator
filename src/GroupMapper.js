@@ -4,7 +4,7 @@ export class GroupMapper {
     this.childrenByParent = new Map()
 
     parser.consumeReports({
-      onGroupEnd: group => this.onGroupEnd(group),
+      groupEnd: group => this.onGroupEnd(group),
     })
   }
 

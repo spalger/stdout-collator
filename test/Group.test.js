@@ -1,15 +1,14 @@
 import { expect } from 'chai'
 
 import { Group } from '../src'
-import { bufferFromString as stob } from '../src/buffers'
 
 describe('Group', () => {
   it('defines properties by combining startProperty(), write(), and finishProperty()', () => {
     const g = new Group
     g.startProperty('name')
-    g.write(stob('foo'))
-    g.write(stob(' '))
-    g.write(stob('bar'))
+    g.write('foo')
+    g.write(' ')
+    g.write('bar')
     g.finishProperty('name')
     expect(g.name).to.equal('foo bar')
   })
@@ -17,9 +16,9 @@ describe('Group', () => {
   it('defines properties formatted as json', () => {
     const g = new Group
     g.startProperty('meta', { json: true })
-    g.write(stob('{"name":'))
-    g.write(stob('"foo","age":2'))
-    g.write(stob('2}'))
+    g.write('{"name":')
+    g.write('"foo","age":2')
+    g.write('2}')
     g.finishProperty('meta')
     expect(g.meta).to.eql({ name: 'foo', age: 22 })
   })
@@ -59,11 +58,11 @@ describe('Group', () => {
   it('serializes written properties to pojo', () => {
     const g = new Group
     g.startProperty('name')
-    g.write(stob('foo'))
+    g.write('foo')
     g.finishProperty('name')
 
     g.startProperty('stage')
-    g.write(stob('beta'))
+    g.write('beta')
     g.finishProperty('stage')
 
     g.bar = true

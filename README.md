@@ -11,11 +11,21 @@ We are using this module to collect the log output produced during text executio
 In the scenario described above, this is in the parent process:
 
 ```js
+import { format } from 'util'
 import { bindToStdout } from 'stdout-collator'
+
 const parser = bindToStdout()
+
+// Notice how the report consumers don't use console.log!
+// Doing so would pollute the parser, instead use stderr,
+// or parser.log.
 parser.consumeReports({
-  onGroupEnd(group) {
-    console.log('got a group', group)
+  groupStart(group) {
+    parser.log('group started', group.startMark)
+  },
+
+  groupEnd(group) {
+    parser.log('group ended', group.endMark)
   }
 })
 ```
@@ -46,24 +56,32 @@ The Parser class is responsible for tracking and scanning all of the chunks writ
 
 ### `parser.consumeReports({ [reportName: string]: (any?) => void })`
 
-Register a consumer of the parser reports. Right now this is just one report implemented, `onGroupEnd`. Pass an object with an `onGroupEnd` function property and it will be called at the end of each group definition with the group object defined.
+Register a consumer of the parser reports. Right now there are two reports; `groupStart` and `groupEnd`. Pass an object with with function properties matching these report names and they will be called with `Group` objects at the correct time.
 
 ## `Group` class
 
-The markers written to stdout indicate the beginning and end of output groups. Whenever a group is ended the parser will report a `groupEnd` and provide an instance of `Group` to the consumer.
+The markers written to stdout indicate the beginning and end of output groups. Whenever a start mark is fully parsed a `groupStart` will be reported. Once the end of a group is parsed a `groupEnd` will be reported. Both of these reports provide the consumer the group instance, and only certain properties will be available at certain points:
 
 ### `group.parent : Group?`
+
+_available at all times_
 
 The parent of this group, if there is one
 
 ### `group.startMark : { [key: string]: any }`
 
+_available in the `groupStart` and `groupEnd` report handler_
+
 The attributes defined by the startMark
 
 ### `group.endMark : { [key: string]: any }`
 
+_available in the `groupEnd` report handler_
+
 The attributes defined by the endMark
 
 ### `group.output : string`
+
+_available in the `groupEnd` report handler_
 
 The text logged within this group

@@ -54,7 +54,7 @@ Call this method to create a parser that is bound to stdout. You should only cal
 
 The Parser class is responsible for tracking and scanning all of the chunks written to stdout, finding the markers in the output, parsing the attributes of each mark, and emitting Group objects
 
-### `parser.consumeReports({ [reportName: string]: (any?) => void })`
+### `parser.consumeReports({ ...handlers })`
 
 Register a consumer of the parser reports. Right now there are two reports; `groupStart` and `groupEnd`. Pass an object with with function properties matching these report names and they will be called with `Group` objects at the correct time.
 

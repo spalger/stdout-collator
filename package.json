@@ -1,6 +1,6 @@
 {
   "name": "stdout-collator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Harvest and aggregate stdout so that it can be associated with test suites",
   "main": "dist/index.js",
   "scripts": {
